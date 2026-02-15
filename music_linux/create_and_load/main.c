@@ -20,7 +20,10 @@ typedef struct Info {
     int     array_size;
     int     is_connected;
 } Info;
-
+struct args_thread {
+        char *keyboard;
+        Chord *chord;
+};
 // limpa o terminal
 void clear_terminal(){
 
@@ -40,7 +43,6 @@ int write_instructions(){
     printf("Save to a file:\n> s <filename>\n");
     printf("Loading from a file:\n> g <filename>\n");
     printf("Get help:\n> h\n");
-    printf("Link to vizualizer(NOT IMPLEMENTED YET):\n> v\n");
     printf("Exit:\n> q\n");
     return 0;
 }
@@ -205,24 +207,17 @@ int message_terminal_record(Chord *chord){
     print_chord(chord);
     printf("\r");
 }
-int record_notes(Info* info){
+int record_notes(void* args){
     int i;
     char *keyboard, c;
     Note note;
-    Chord *chord;
-
-    chord = calloc(1,sizeof(Chord));
-
-    keyboard = malloc(KEYBOARD_SIZE*sizeof(char));
-
-    clear_terminal();
-
-    setup_keyboard_piano(keyboard);
-
-    printf("carregue '.' para parar carregue '-' para apagar o accorde e '+' para guardar o accorde\n");
+	Chord *chord;
+	
+	struct arg_thread *a = args;
 
     system ("/bin/stty raw");
-    while(c=getchar()) {
+    
+	while(c=getchar()) {
 
         switch (c)
         {
@@ -230,65 +225,57 @@ int record_notes(Info* info){
             goto end_recording;
             return 0;
         case '-':
-
             for (i=0; i < chord->size; i++){
                 chord->note_array[i] = '\0';
-            }
-
+            }  
             break;
-
-        case '+':
-
-            if (info->array_size == MAX_CHORDS) {
-                printf("%s\n", ERRLIMITCHORDS);
-                goto end_recording;
-            }
-
-            for (i = 0; i < chord->size; i++){
-                info->chord_array[info->array_size] = chord;
-            }
-
-            info->array_size++;
-
-            chord = calloc(1,sizeof(Chord));
-
-            chord->size = 0;
-            
         default:
-
             if (chord->size == CHORD_SIZE) {
                 for (i=0; i < CHORD_SIZE; i++){
                     chord->note_array[i] = '\0';
                 }
                 chord->size = 0;
             }
-
             note = get_note_enum_keyboard(c, keyboard);
-
             if (note != Inv){
-
                 chord->note_array[chord->size++] = note;
-
             }
-
             break;
         }
-        message_terminal_record(chord);
     }
 
     end_recording:
     
-    free(keyboard);
-    free(chord);
-
     system ("/bin/stty cooked");
-
-    clear_terminal();
-    list_progression(info);
 
     return 0;
 }
 
+int piano_visualizer(Info *info){
+    char *keyboard;
+    Chord *chord;
+	pthread_t thread;
+	struct args_thread args;
+
+    chord = calloc(1,sizeof(Chord));
+
+    keyboard = malloc(KEYBOARD_SIZE*sizeof(char));
+
+	args.keyboard = keyboard;
+	args.chord = chord;
+
+    clear_terminal();
+	
+    setup_keyboard_piano(keyboard);
+	
+	// fazer um thread differnte q le do chord
+	pthread_create(&thread, NULL, record_notes, (void *)(&args));
+	
+	pthread_join(thread, NULL);
+	
+	// fazr aqui o loop a espera q o phtread faça join
+    return 0;
+}
 int main(int argc, char* argv[]) {
     char buf[BUFSIZ];
     Info program_info;
@@ -311,7 +298,7 @@ int main(int argc, char* argv[]) {
         case 'h': write_instructions(); break;
         case 'i': get_info(&program_info);break;
         case 'q': end(&program_info);
-        case 'p': record_notes(&program_info);break;
+        case 'p': piano_visualizer(&program_info);break;
         case 's': save_to_file(buf, &program_info);break;
         case 'g': load_from_file(buf, &program_info);break;
         default: break;
