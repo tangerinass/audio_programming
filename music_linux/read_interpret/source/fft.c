@@ -2,7 +2,11 @@
 #include <math.h>
 #include <complex.h>
 #include "fft.h" 
-double PI;
+
+// Define PI properly
+#ifndef PI
+#define PI 3.14159265358979323846
+#endif
  
 void _fft(cplx buf[], cplx out[], int n, int step)
 {
@@ -11,7 +15,8 @@ void _fft(cplx buf[], cplx out[], int n, int step)
 		_fft(out + step, buf + step, n, step * 2);
  
 		for (int i = 0; i < n; i += 2 * step) {
-			cplx t = cexpf(-I * PI * i / n) * out[i + step];
+            // Changed cexpf to cexp to match double complex
+			cplx t = cexp(-I * PI * i / n) * out[i + step];
 			buf[i / 2]     = out[i] + t;
 			buf[(i + n)/2] = out[i] - t;
 		}
@@ -25,7 +30,6 @@ void fft(cplx buf[], int n)
  
 	_fft(buf, out, n, 1);
 }
- 
  
 void show(const char * s, cplx buf[]) {
 	printf("%s", s);
