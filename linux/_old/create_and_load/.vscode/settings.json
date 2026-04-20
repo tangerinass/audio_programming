@@ -1,0 +1,19 @@
+{
+    "files.associations": {
+        "array": "c",
+        "string_view": "c",
+        "initializer_list": "c",
+        "utility": "c",
+        "typeinfo": "c",
+        "cerrno": "c",
+        "string.h": "c",
+        "stdio.h": "c",
+        "stdbool.h": "c",
+        "sstream": "c",
+        "math.h": "c",
+        "unistd.h": "c",
+        "music.h": "c",
+        "parse.h": "c",
+        "msg.h": "c"
+    }
+}
