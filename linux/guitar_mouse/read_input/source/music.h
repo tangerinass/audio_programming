@@ -13,6 +13,9 @@
 #define CHANNELS 1
 #define HPS_FACTOR 5
 
+#define MIN_MAG 20
+#define MIN_NOTE 10
+
 extern const char* NOTES[NOTES_SIZE];
 
 const char* get_note_string(float freq);

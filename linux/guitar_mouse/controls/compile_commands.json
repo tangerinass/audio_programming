@@ -8,8 +8,21 @@
       "main",
       "main.c"
     ],
-    "directory": "/home/tangerinass/Desktop/code/audio_programming/music_linux/controls",
-    "file": "/home/tangerinass/Desktop/code/audio_programming/music_linux/controls/main.c",
-    "output": "/home/tangerinass/Desktop/code/audio_programming/music_linux/controls/main"
+    "directory": "/home/tangerinass/Desktop/code/audio_programming/linux/guitar_mouse/controls",
+    "file": "/home/tangerinass/Desktop/code/audio_programming/linux/guitar_mouse/controls/main.c",
+    "output": "/home/tangerinass/Desktop/code/audio_programming/linux/guitar_mouse/controls/main"
+  },
+  {
+    "arguments": [
+      "/usr/bin/cc",
+      "-c",
+      "-I/usr/include/libevdev-1.0",
+      "-o",
+      "main",
+      "../common/common.c"
+    ],
+    "directory": "/home/tangerinass/Desktop/code/audio_programming/linux/guitar_mouse/controls",
+    "file": "/home/tangerinass/Desktop/code/audio_programming/linux/guitar_mouse/common/common.c",
+    "output": "/home/tangerinass/Desktop/code/audio_programming/linux/guitar_mouse/controls/main"
   }
 ]

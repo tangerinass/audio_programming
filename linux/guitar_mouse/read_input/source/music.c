@@ -1,16 +1,22 @@
 #include "music.h"
 const char* NOTES[NOTES_SIZE] = {"A", "Bb", "B", "C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab"};
 
-const char* get_note_string(float freq){
-	int offset = calc_offset(freq);
-	int i = (offset % NOTES_SIZE + NOTES_SIZE) % NOTES_SIZE;
-	return NOTES[i];
+int calc_offset_raw(float freq){
+	int offset = (int)round(NOTES_SIZE*log2(freq/REFERENCE_FREQ));
+	return offset;
 }
 
 int calc_offset(float freq){
-	return (int)round(NOTES_SIZE*log2(freq/REFERENCE_FREQ));
+	int offset_raw = calc_offset_raw(freq);
+	int offset = (offset_raw % NOTES_SIZE + NOTES_SIZE) % NOTES_SIZE;
+	return offset;
 }
 
+const char* get_note_string(float freq){
+	int offset = calc_offset_raw(freq);
+	int i = (offset % NOTES_SIZE + NOTES_SIZE) % NOTES_SIZE;
+	return NOTES[i];
+}
 
 // metodos para modificar ou o buffer de audio ou o buffer apos fft
 void apply_hann_window(float* data, int size) {
