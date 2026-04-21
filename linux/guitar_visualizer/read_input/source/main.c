@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <complex.h>
 #include <fcntl.h>
+#include <signal.h>
 #define MINIAUDIO_IMPLEMENTATION
 
 #include "../../../../miniaudio.h"
@@ -18,6 +19,11 @@
 // por enquanto so vou focar me em linux descomentar isto se for testar em linux
 // ver como faço para ter o mm programa poder correr em systemas op dif
 //#define CMPLX(x, y) ((double complex)((double)(x) + I * (double)(y)))
+
+static volatile int run = 1;
+void sig_handler(int x){
+	run = 0;
+}
 
 void data_callback(ma_device* pDevice, void* pOutput, const void* pInput, ma_uint32 frameCount) {
 	ma_pcm_rb* pRB = (ma_pcm_rb*)pDevice->pUserData;
@@ -97,15 +103,17 @@ int main() {
 	// main loop cosiste em ver se consigo encher o meu buffer todo, se puder ent enho o meu buffer
 	// depois de encher o buffer aplico uma hann windowing algoritmo (pucxei do chat) q so basicamente faz com que haja menos inconsistencias
 	// finalmente aplico o meu algoritmo de Harmonic Produt Spectrum que faz os produtos dos bin sempre q se repetem, fazendo com que os picos aumentem facilitando a leitura para frequencias mais baixas (aumentar o hps para melhorar leituras a baixas freeq)
+	
 
+	mkfifo(pathname, 0666);
 	printf("Script started\n");
 
 
 	// INFO: deamsiados calculos dentro do loop tentar reduzir, talvez o outro programa trata de fazr as medias?? 
 	// idk n sei se reduz assim tatno prb n faz diferença
 
-
-	while (1) {
+	signal(SIGINT, sig_handler);
+	while (run) {
 		ma_uint32 available;
 		available = ma_pcm_rb_available_read(&rbuffer);
 
@@ -158,8 +166,10 @@ int main() {
 		ma_sleep(10);
 	}
 
+	printf("Exiting program\n");
 	free(fft_buff);
 	ma_device_uninit(&device);
 	free(processing_buff);
+	
 	return 0;
 }

@@ -1,7 +1,5 @@
-all: clean sphere wave
-sphere:sphere.c
-	cc sphere.c common/music.c common/parse.c -o sphere -lm
-wave:wave.c
-	cc wave.c common/music.c common/parse.c -o wave -lm
+all: clean sphere
+sphere:source/sphere.c
+	cc source/sphere.c ../common/common.c source/read_fifo.c -o sphere -lm
 clean:
-	rm -f sphere wave
+	rm -f sphere

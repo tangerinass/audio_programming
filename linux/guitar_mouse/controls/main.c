@@ -16,7 +16,6 @@
 // https://docs.kernel.org/input/event-codes.html
 
 static volatile int run = 1;
-
 void sig_handler(int x){
 	run = 0;
 }
