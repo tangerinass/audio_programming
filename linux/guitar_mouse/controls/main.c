@@ -54,7 +54,6 @@ void* read_pipe(void* args){
 			apply_msg_controls(buf, controls);
 		} else {
 			printf("Message not receieved\n");
-			controls[0] = -1;
 		}
 		usleep(10000);
 	}
@@ -103,7 +102,7 @@ void cleanup_devices(struct libevdev *device, struct libevdev_uinput *uidevice){
 
 int main(){
 	int ret;
-	int msg[2] = {0,0};
+	int controls;
 	struct libevdev *device;
 	struct libevdev_uinput *uidevice;
 
@@ -116,7 +115,7 @@ int main(){
 		exit(-1);
 	}
 
-	pthread_create(&pipe_t, NULL, read_pipe, (void*) &msg);
+	pthread_create(&pipe_t, NULL, read_pipe, (void*) &controls);
 
 	signal(SIGINT, sig_handler);
 
@@ -124,14 +123,48 @@ int main(){
 
 	printf("Script started\n");
 	while (run){
-		int dir = msg[0];
-		int dist = msg[1];
-		printf("MSG:[%d,%d]",msg[0], msg[1]);
-		if (dir != -1){
-			libevdev_uinput_write_event(uidevice, EV_REL, dir, dist);
-			libevdev_uinput_write_event(uidevice, EV_SYN, SYN_REPORT, 0);
-			usleep(100000);
+		switch (controls){
+			case NONE:
+				break;
+			case LEFT:
+				libevdev_uinput_write_event(uidevice, EV_REL, REL_X, DIST);
+				libevdev_uinput_write_event(uidevice, EV_SYN, SYN_REPORT, 0);
+				break;
+			case RIGHT:
+				libevdev_uinput_write_event(uidevice, EV_REL, REL_X, (-1) * DIST);
+				libevdev_uinput_write_event(uidevice, EV_SYN, SYN_REPORT, 0);
+				break;
+			case UP:
+				libevdev_uinput_write_event(uidevice, EV_REL, REL_Y, DIST);
+				libevdev_uinput_write_event(uidevice, EV_SYN, SYN_REPORT, 0);
+				break;
+			case DOWN:
+				libevdev_uinput_write_event(uidevice, EV_REL, REL_Y, (-1) * DIST);
+				libevdev_uinput_write_event(uidevice, EV_SYN, SYN_REPORT, 0);
+				break;
+			case LEFT_B:
+				libevdev_uinput_write_event(uidevice, EV_KEY, BTN_LEFT, 1);
+				libevdev_uinput_write_event(uidevice, EV_SYN, SYN_REPORT, 0);
+				usleep(100000);	
+				libevdev_uinput_write_event(uidevice, EV_KEY, BTN_LEFT, 0);
+				libevdev_uinput_write_event(uidevice, EV_SYN, SYN_REPORT, 0);
+				break;
+			case RIGHT_B:
+				libevdev_uinput_write_event(uidevice, EV_KEY, BTN_RIGHT, 1);
+				libevdev_uinput_write_event(uidevice, EV_SYN, SYN_REPORT, 0);
+				usleep(100000);	
+				libevdev_uinput_write_event(uidevice, EV_KEY, BTN_RIGHT, 0);
+				libevdev_uinput_write_event(uidevice, EV_SYN, SYN_REPORT, 0);
+				break;
+			case MIDDLE_B:
+				libevdev_uinput_write_event(uidevice, EV_KEY, BTN_MIDDLE, 1);
+				libevdev_uinput_write_event(uidevice, EV_SYN, SYN_REPORT, 0);
+				usleep(100000);	
+				libevdev_uinput_write_event(uidevice, EV_KEY, BTN_RIGHT, 0);
+				libevdev_uinput_write_event(uidevice, EV_SYN, SYN_REPORT, 0);
+				break;
 		}
+		usleep(100000);
 	}
 
 
