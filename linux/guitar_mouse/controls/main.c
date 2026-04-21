@@ -167,9 +167,13 @@ int main(){
 		usleep(100000);
 	}
 
-
+	unlink(pathname);
+	
 	pthread_join(pipe_t, NULL);
+	
 	cleanup_devices(device, uidevice);
+	
 	printf("Script ended\n");
+	
 	return 0;
 }
