@@ -10,14 +10,16 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 
-#include "../common/common.h"
+#include <errno.h>
+#include "../../common/common.h"
 
 #include <signal.h>
 // https://docs.kernel.org/input/event-codes.html
 
-static volatile int run = 1;
+volatile sig_atomic_t running = 1;
+
 void sig_handler(int x){
-	run = 0;
+	running = 0;
 }
 
 /* TODO: fazr mensganes de erro para os pipes */
@@ -27,17 +29,21 @@ void* read_pipe(void* args){
 	int* controls = (int*)args;
 
 	ret = mkfifo(pathname, 0666);
+	// TODO: encontrar modo de encontrar o user e grp de um user (acho q default é isto mas n é mt bom assim)
 	chown(pathname, 1000, 1000);
 	if (ret != 0){
 		perror("Failed trying to create fifo");
 		return NULL;
 	}
 	
-	while (run){
+	while (running){
 		
-		if ( (fd = open(pathname, O_RDONLY)) < 0){
-			perror("Failed trying to open fifo");
-			return NULL;
+		if ( (fd = open(pathname, O_RDONLY| O_NONBLOCK)) < 0){
+			
+			if (errno != EAGAIN){
+				perror("Failed trying to open fifo");
+				return NULL;
+			}
 		}
 
 		ret = read(fd, buf, MSG_SIZE);
@@ -51,8 +57,6 @@ void* read_pipe(void* args){
 		else if (ret > 0){
 			printf("Message recieved!\n");
 			apply_msg_controls(buf, controls);
-		} else {
-			printf("Message not receieved\n");
 		}
 		usleep(10000);
 	}
@@ -93,20 +97,16 @@ struct libevdev_uinput* setup_devices(struct libevdev *device){
 
 }
 
-void cleanup_devices(struct libevdev *device, struct libevdev_uinput *uidevice){
-	libevdev_free(device);
-	libevdev_uinput_destroy(uidevice);
-	return;
-}
-
 int main(){
 	int ret;
-	int controls;
+	int controls = {NONE};
 	struct libevdev *device;
 	struct libevdev_uinput *uidevice;
 
 	pthread_t pipe_t;
 
+	signal(SIGINT, sig_handler);
+	
 	uidevice = setup_devices(device);
 
 	// TODO: dar handle a caso de erro aqui 
@@ -116,12 +116,10 @@ int main(){
 
 	pthread_create(&pipe_t, NULL, read_pipe, (void*) &controls);
 
-	signal(SIGINT, sig_handler);
-
 	sleep(1);
 
-	printf("Script started\n");
-	while (run){
+	printf("Script started (Press Crtl-C to interrupt)\n");
+	while (running){
 		switch (controls){
 			case NONE:
 				break;
@@ -166,13 +164,13 @@ int main(){
 		usleep(100000);
 	}
 
-	unlink(pathname);
+	printf("Script ended\n");
 	
 	pthread_join(pipe_t, NULL);
 	
-	cleanup_devices(device, uidevice);
+	unlink(pathname);
 	
-	printf("Script ended\n");
+	libevdev_uinput_destroy(uidevice);
 	
 	return 0;
 }

@@ -137,18 +137,18 @@ int main() {
 					if (ptr == MIN_NOTE){
 						note = find_note_mode(note_buff, MIN_NOTE);
 
-						printf("Sending note: %s\n", NOTES[note]);
 						char tmp[MSG_SIZE];
 						sprintf(tmp, "%-19d", note); 
 
 
-						if ( (fd = open(pathname, O_WRONLY)) < 0){
-							perror("Failed trying to opene FIFO");
-							exit(-1);
+						if ( (fd = open(pathname, O_WRONLY)) > 0){
+							ret = write(fd, tmp, MSG_SIZE);
+
+							close(fd);
+
+							printf("Sending note: %s\n", NOTES[note]);
 						}
 
-						ret = write(fd, tmp, MSG_SIZE);
-						close(fd);
 						ptr = 0;
 					}
 				}
