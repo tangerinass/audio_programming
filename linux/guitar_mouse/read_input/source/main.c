@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <complex.h>
 #include <fcntl.h>
+#include <signal.h>
 #define MINIAUDIO_IMPLEMENTATION
 
 #include "../../../../miniaudio.h"
@@ -19,6 +20,11 @@
 // ver como faço para ter o mm programa poder correr em systemas op dif
 //#define CMPLX(x, y) ((double complex)((double)(x) + I * (double)(y)))
 
+volatile sig_atomic_t running = 1;
+
+void handle_interrupt(int x){
+	running = 0;
+}
 void data_callback(ma_device* pDevice, void* pOutput, const void* pInput, ma_uint32 frameCount) {
 	ma_pcm_rb* pRB = (ma_pcm_rb*)pDevice->pUserData;
 	ma_uint32 framesToWrite = frameCount;
@@ -66,7 +72,21 @@ int main() {
 	ma_device_info* pCaptureInfos;
 	ma_uint32 captureCount;
 	ma_uint32 selection = 0;
-
+	
+	signal(SIGINT, handle_interrupt);
+	
+	ret = mkfifo(pathname, 0666);
+	chown(pathname, 777, 777);
+	
+	if (ret != 0){
+		perror("Failed trying to create fifo");
+		exit(-1);
+	}
+	
+	if ( (fd = open(pathname, O_RDWR)) < 0){
+		perror("Failed trying to open fifo");
+		exit(-1);
+	}
 	ma_context_init(NULL, 0, NULL, &context);
 	ma_context_get_devices(&context, NULL, NULL, &pCaptureInfos, &captureCount);
 
@@ -104,8 +124,7 @@ int main() {
 	// INFO: deamsiados calculos dentro do loop tentar reduzir, talvez o outro programa trata de fazr as medias?? 
 	// idk n sei se reduz assim tatno prb n faz diferença
 
-
-	while (1) {
+	while (running) {
 		ma_uint32 available;
 		available = ma_pcm_rb_available_read(&rbuffer);
 
@@ -132,22 +151,15 @@ int main() {
 
 					note_buff[ptr++] = note;
 
-					//printf("note:%s, freq:%lf, offset:%d, array:%d-%s\n", get_note_string(freq), freq, calc_offset(freq), note_buff[ptr-1], NOTES[note_buff[ptr-1]]);
-
 					if (ptr == MIN_NOTE){
 						note = find_note_mode(note_buff, MIN_NOTE);
 
 						char tmp[MSG_SIZE];
 						sprintf(tmp, "%-19d", note); 
 
-
-						if ( (fd = open(pathname, O_WRONLY)) > 0){
-							ret = write(fd, tmp, MSG_SIZE);
-
-							close(fd);
-
-							printf("Sending note: %s\n", NOTES[note]);
-						}
+						ret = write(fd, tmp, MSG_SIZE);
+						
+						printf("Sending note: %s\n", NOTES[note]);
 
 						ptr = 0;
 					}
@@ -158,8 +170,21 @@ int main() {
 		ma_sleep(10);
 	}
 
+
+	char tmp[MSG_SIZE];
+	sprintf(tmp, "%-19d", -1);
+	
+	ret = write(fd, tmp, MSG_SIZE);
+
+	printf("Ending script\n");
+	
+	close(fd);
+
+	unlink(pathname);		
+
 	free(fft_buff);
-	ma_device_uninit(&device);
 	free(processing_buff);
+	ma_device_uninit(&device);
+
 	return 0;
 }

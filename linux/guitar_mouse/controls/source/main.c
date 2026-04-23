@@ -10,40 +10,29 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 
-#include <errno.h>
 #include "../../common/common.h"
 
-#include <signal.h>
-// https://docs.kernel.org/input/event-codes.html
+#include <semaphore.h>
 
-volatile sig_atomic_t running = 1;
+#define WAIT_TIME_N 100000
 
-void sig_handler(int x){
-	running = 0;
-}
+sem_t msg_rec;
+sem_t msg_applied;
 
-/* TODO: fazr mensganes de erro para os pipes */
 void* read_pipe(void* args){
-	int fd, ret;
+	int sent = 0, fd, ret;
 	char buf[BUFSIZ];
 	int* controls = (int*)args;
-
-	ret = mkfifo(pathname, 0666);
-	// TODO: encontrar modo de encontrar o user e grp de um user (acho q default é isto mas n é mt bom assim)
-	chown(pathname, 1000, 1000);
-	if (ret != 0){
-		perror("Failed trying to create fifo");
-		return NULL;
-	}
 	
-	while (running){
+	while (1){
+		if (sent){
+			sent = 0;
+			sem_wait(&msg_applied);
+		}
 		
-		if ( (fd = open(pathname, O_RDONLY| O_NONBLOCK)) < 0){
-			
-			if (errno != EAGAIN){
-				perror("Failed trying to open fifo");
-				return NULL;
-			}
+		if ( (fd = open(pathname, O_RDONLY)) < 0){
+			printf("Cant connect to fifo\n");
+			continue;
 		}
 
 		ret = read(fd, buf, MSG_SIZE);
@@ -52,13 +41,23 @@ void* read_pipe(void* args){
 
 		if (ret < 0){
 			perror("Failed trying to read fifo");
-			return NULL;
+			exit(-1);
 		}
 		else if (ret > 0){
+
 			printf("Message recieved!\n");
-			apply_msg_controls(buf, controls);
+				
+			ret = apply_msg_controls(buf, controls);
+			
+			sem_post(&msg_rec);
+			 
+			sent = 1;
+
+			if (ret < 0){
+				printf("Sender disconected");
+				sent = 0;
+			}
 		}
-		usleep(10000);
 	}
 	return NULL;
 }
@@ -99,27 +98,25 @@ struct libevdev_uinput* setup_devices(struct libevdev *device){
 
 int main(){
 	int ret;
-	int controls = {NONE};
+	int controls = NONE;
 	struct libevdev *device;
 	struct libevdev_uinput *uidevice;
 
 	pthread_t pipe_t;
-
-	signal(SIGINT, sig_handler);
 	
+	sem_init(&msg_rec, 0, 0);
+	sem_init(&msg_applied, 0, 1);
+
 	uidevice = setup_devices(device);
 
-	// TODO: dar handle a caso de erro aqui 
 	if (ret != 0){
 		exit(-1);
 	}
-
+	
 	pthread_create(&pipe_t, NULL, read_pipe, (void*) &controls);
 
-	sleep(1);
-
-	printf("Script started (Press Crtl-C to interrupt)\n");
-	while (running){
+	while (1){
+		sem_wait(&msg_rec);
 		switch (controls){
 			case NONE:
 				break;
@@ -142,34 +139,30 @@ int main(){
 			case LEFT_B:
 				libevdev_uinput_write_event(uidevice, EV_KEY, BTN_LEFT, 1);
 				libevdev_uinput_write_event(uidevice, EV_SYN, SYN_REPORT, 0);
-				usleep(100000);	
+				usleep(WAIT_TIME_N);	
 				libevdev_uinput_write_event(uidevice, EV_KEY, BTN_LEFT, 0);
 				libevdev_uinput_write_event(uidevice, EV_SYN, SYN_REPORT, 0);
 				break;
 			case RIGHT_B:
 				libevdev_uinput_write_event(uidevice, EV_KEY, BTN_RIGHT, 1);
 				libevdev_uinput_write_event(uidevice, EV_SYN, SYN_REPORT, 0);
-				usleep(100000);	
+				usleep(WAIT_TIME_N);	
 				libevdev_uinput_write_event(uidevice, EV_KEY, BTN_RIGHT, 0);
 				libevdev_uinput_write_event(uidevice, EV_SYN, SYN_REPORT, 0);
 				break;
 			case MIDDLE_B:
 				libevdev_uinput_write_event(uidevice, EV_KEY, BTN_MIDDLE, 1);
 				libevdev_uinput_write_event(uidevice, EV_SYN, SYN_REPORT, 0);
-				usleep(100000);	
+				usleep(WAIT_TIME_N);	
 				libevdev_uinput_write_event(uidevice, EV_KEY, BTN_RIGHT, 0);
 				libevdev_uinput_write_event(uidevice, EV_SYN, SYN_REPORT, 0);
 				break;
 		}
-		usleep(100000);
+		sem_post(&msg_applied);
 	}
 
-	printf("Script ended\n");
-	
 	pthread_join(pipe_t, NULL);
-	
-	unlink(pathname);
-	
+
 	libevdev_uinput_destroy(uidevice);
 	
 	return 0;

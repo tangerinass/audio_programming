@@ -1,5 +1,5 @@
 all: clean sphere
-sphere:source/sphere.c
-	cc source/sphere.c ../common/common.c source/read_fifo.c -o sphere -lm
+main:source/main.c
+	cc source/main.c ../common/common.c source/read_fifo.c -o main -lm
 clean:
-	rm -f sphere
+	rm -f main

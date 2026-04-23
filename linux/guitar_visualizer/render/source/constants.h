@@ -1,8 +1,7 @@
 #ifndef CONSTANTS_
 #define CONSTANTS_
 
-#define R 1
-#define SCREEN_DIST 10
-#define INTERVAL 100
+#define TERMINAL_SIZE 200
 
 #endif
+
