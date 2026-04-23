@@ -56,7 +56,6 @@ int find_note_mode(int* buff, int size){
 	return note;
 }
 
-// TODO: arranjar maneira de poder encontrar o device do amp e correr sem pedir
 int main() {
 	int ret, fd, ptr = 0;
 	int note_buff[MIN_NOTE];
